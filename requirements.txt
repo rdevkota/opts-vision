@@ -4,4 +4,3 @@ requests
 prophet
 pandas
 numpy
-plotly.graph_objects
