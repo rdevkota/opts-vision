@@ -1,5 +1,9 @@
 from flask import Flask, request, render_template, jsonify
 import yfinance as yf
+import flask
+import dash
+from dash import html as html
+
 
 # instantiate the Flask app.
 app = Flask(__name__, template_folder='templates')
@@ -39,6 +43,10 @@ def display_history():
 def home():
 	# we will use Flask's render_template method to render a website template.
     return render_template("homepage.html")
+
+dash_app = dash.Dash(server=app, routes_pathname_prefix="/dash/")
+
+dash_app.layout = html.Div("This is the Dash app.")
 
 # run the flask app.
 if __name__ == "__main__":

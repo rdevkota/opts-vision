@@ -24,3 +24,6 @@ Werkzeug==2.0.2
 Gunicorn
 flask
 yfinance
+dash
+dash_table
+dash_html_components
