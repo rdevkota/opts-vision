@@ -27,3 +27,7 @@ yfinance
 dash
 dash_table
 dash_html_components
+plotly.express 
+pandas
+dash_core_components
+dash_bootstrap_components
