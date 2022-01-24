@@ -12,7 +12,7 @@ from dash import Input, Output, dcc, html
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-# strt of the app
+# start of the app
 app = Flask(__name__, template_folder='templates')
 dash_app = dash.Dash(server=app, routes_pathname_prefix="/dash/", external_stylesheets=[dbc.themes.MINTY])
 dash_app.layout = html.Div(
