@@ -1,8 +1,9 @@
 from cProfile import label
 from ctypes import alignment
+from linecache import cache
 from logging import PlaceHolder
 from flask import Flask, request, render_template, jsonify, abort, Flask, redirect, url_for
-from numpy import ma
+from numpy import lib, ma
 import pandas as pd
 import yfinance as yf
 import flask
@@ -13,6 +14,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 # start of the app
+from functools import lru_cache
+
 app = Flask(__name__, template_folder='templates')
 dash_app = dash.Dash(server=app, routes_pathname_prefix="/dash/", external_stylesheets=[dbc.themes.MINTY])
 dash_app.layout = html.Div(
@@ -110,6 +113,7 @@ def get_stock_data(input_value):
 # see https://plotly.com/python/px-arguments/ for more options
 
 #funtion to get the historic data
+@lru_cache
 def get_historic_data(ticker):
   return yf.download(ticker, period="max")
 
@@ -142,8 +146,6 @@ def show_stock_data(ticker):
         tickformat="%b\n%Y")
 
     macd_chart = dcc.Graph(id="macd_chart", figure=fig1)
-
-    #rsi = talib.RSI(data["Close"])
 
     dash_app.layout = html.Div(children=[
         html.H1(children='Analytics For Ticker: ' + ticker),
