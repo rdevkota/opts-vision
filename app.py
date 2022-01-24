@@ -1,8 +1,7 @@
 from cProfile import label
 from ctypes import alignment
 from logging import PlaceHolder
-# from turtle import color
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template, jsonify, abort, Flask, redirect, url_for
 from numpy import ma
 import pandas as pd
 import yfinance as yf
@@ -11,8 +10,6 @@ import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
 import plotly.express as px
-import pandas as pd
-from flask import abort, Flask, redirect, url_for
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
