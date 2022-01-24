@@ -1,4 +1,9 @@
+from cProfile import label
+from ctypes import alignment
+from logging import PlaceHolder
+# from turtle import color
 from flask import Flask, request, render_template, jsonify
+from numpy import ma
 import pandas as pd
 import yfinance as yf
 import flask
@@ -8,13 +13,30 @@ from dash import Input, Output, dcc, html
 import plotly.express as px
 import pandas as pd
 from flask import abort, Flask, redirect, url_for
-
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 # instantiate the Flask app.
 app = Flask(__name__, template_folder='templates')
-dash_app = dash.Dash(server=app, routes_pathname_prefix="/dash/", external_stylesheets=[dbc.themes.VAPOR])
-
+dash_app = dash.Dash(server=app, routes_pathname_prefix="/dash/", external_stylesheets=[dbc.themes.MINTY])
+dash_app.layout = html.Div(
+    [
+        dcc.Location(id="url"),
+        dbc.NavbarSimple(
+            children=[
+                dbc.NavLink("Home", href="/", active=True),
+                dbc.NavLink("Pricing", href="/page-1", active="exact"),
+                dbc.NavLink("Blog", href="/page-2", active="exact"),
+				dbc.NavLink("Sign In/Up", href="/page-2", active="exact"),
+            ],
+            brand="OptsVision Analytics",
+            color="primary",
+            dark=True,
+        ),
+        dbc.Container(id="page-content", className="dbc"),
+    ]
+)
 
 # API Route for pulling the stock quote
 @app.route("/quote")
@@ -52,13 +74,6 @@ def home():
 	# we will use Flask's render_template method to render a website template.
 	return redirect(url_for('/dash/'))
 
-	#return dash_app.layout
-    # return render_template("homepage.html")
-
-# dbc_css = "https://cdn.jsdelivr.net/gh/AnnMarieW/dash-bootstrap-templates@V1.0.4/dbc.min.css"
-
-
-
 @dash_app.callback(Output("page-content", "children"), [Input("url", "pathname")])
 def render_page_content(pathname):
     if pathname == "/":
@@ -67,51 +82,81 @@ def render_page_content(pathname):
         return html.P("This is the content of page 1. Yay!")
     elif pathname == "/page-2":
         return html.P("Oh cool, this is page 2!")
-    # If the user tries to reach a different page, return a 404 message
-    return dbc.Jumbotron(
-        [
-            html.H1("404: Not found", className="text-danger"),
-            html.Hr(),
-            html.P(f"The pathname {pathname} was not recognised..."),
-        ]
-    )
-
-dash_app.layout = html.Div(
-    [
-        dcc.Location(id="url"),
-        dbc.NavbarSimple(
-            children=[
-                dbc.NavLink("Home", href="/", active="exact"),
-                dbc.NavLink("Pricing", href="/page-1", active="exact"),
-                dbc.NavLink("Blog", href="/page-2", active="exact"),
-				dbc.NavLink("Sign In/Up", href="/page-2", active="exact"),
-            ],
-            brand="OptsVision Options Analytics",
-            color="primary",
-            dark=True,
+    return  html.Div(
+    [        
+        html.Br(),
+        html.Br(),
+        html.Br(),
+        html.P('Search For Stock/ETF/Index Ticker Symbol ...'),
+        dbc.InputGroup(
+            [   
+                dbc.Input(id="input-group-button-input", placeholder="Enter Stock/ETF/Index Ticker Symbol", type="text",  size="lg", value=''),
+                dbc.Button("Search", id="input-group-button", color="secondary", n_clicks=0),
+            ]
         ),
-        dbc.Container(id="page-content", className="dbc"),
-    ]
+        html.Br(),
+        html.Div(id='analytics-space')
+    ])
+
+
+
+@dash_app.callback(
+    Output(component_id='analytics-space', component_property='children'),
+    Input(component_id='input-group-button-input', component_property='value')
 )
+
+def get_stock_data(input_value):
+        print(input_value)
+        if len(input_value) > 1 :
+            return html.Div(show_stock_data(input_value))
+        return 'Enter Stock/ETF/Index Ticker Symbol ....'
 
 # assume you have a "long-form" data frame
 # see https://plotly.com/python/px-arguments/ for more options
-# df = pd.DataFrame({
-#     "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
-#     "Amount": [4, 1, 2, 2, 4, 5],
-#     "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
-# })
 
-# fig = px.bar(df, x="Fruit", y="Amount", color="City", barmode="group")
+#funtion to get the historic data
+def get_historic_data(ticker):
+  return yf.download(ticker, period="max")
 
-# dash_app.layout = html.Div(children=[
-#     html.H1(children='Vision Dashboard'),
-#     html.Div(children=''' The Analytics Dashboard for Investors'''),
-#     dcc.Graph(
-#         id='example-graph',
-#         figure=fig
-#     )
-# ])
+def get_MACD(df):
+  df['EMA12'] = df.Close.ewm(span=12).mean()
+  df['EMA26'] = df.Close.ewm(span=26).mean()
+  df['MACD'] = df.EMA12 - df.EMA26
+  df['signal'] = df.MACD.ewm(span=9).mean()
+  return df
+  
+def show_stock_data(ticker):
+    df = get_historic_data(ticker)
+    df.reset_index(inplace=True)
+
+    line_colors = ["#7CEA9C", '#50B2C0', "rgb(114, 78, 145)", "hsv(348, 66%, 90%)", "hsl(45, 93%, 58%)"]
+
+    fig = px.bar(df, "Date", "Close", barmode="relative")
+    fig.update_layout({'plot_bgcolor': 'rgba(255, 255, 255, 255)',})
+    fig.update_traces(marker_color='blue')
+    hist_chart = dcc.Graph(id='hist-graph', figure=fig)
+
+    macd_data = get_MACD(df)
+    macd_df = macd_data[(macd_data['Date'] >= '2021-10-01')]
+
+    fig1 = px.line(macd_df, x="Date", y=[macd_df['Date'], macd_df['Close'], macd_df['EMA12'], macd_df['EMA26']],
+              hover_data={"Date": "|%B %d, %Y"},
+              title='MACD Crossover')
+    fig1.update_xaxes(
+        dtick="M1",
+        tickformat="%b\n%Y")
+
+    macd_chart = dcc.Graph(id="macd_chart", figure=fig1)
+
+    #rsi = talib.RSI(data["Close"])
+
+    dash_app.layout = html.Div(children=[
+        html.H1(children='Analytics For Ticker: ' + ticker),
+        html.Div(children='''Historic Data'''),
+        hist_chart,
+        macd_chart,
+    ])
+    return dash_app.layout 
 
 # run the flask app.
 if __name__ == "__main__":
